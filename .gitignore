@@ -1,0 +1,37 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+lib/*.*
+lib.vista/*.*
+release/*.*
+debug/*.*
+image/*.*
+include/fl/*.*
+imagelib/*.*
+imagelib/debug/*.*
+imagelib/release/*.*
+Eigen/*
+images/*
+*.opensdf
+*.sdf
+*.ipch
+
+*.sln
+*.old
+*.vcproj
+*.vcxproj
+*.vcxproj.*
+*.user
+*.suo
+makefile
+.ds_store
