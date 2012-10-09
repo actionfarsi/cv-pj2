@@ -91,11 +91,24 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 	// compute the svd of A using the Eigen package
 	JacobiSVD<MatrixType> svd(A, ComputeFullV);
 
+	CTransform3x3 H;
 	// BEGIN TODO
 	// fill the homography H with the appropriate elements of the SVD
 	// To extract, for instance, the V matrix, use svd.matrixV()
+	JacobiSVD<MatrixType>::MatrixVType v = svd.matrixV();
+	// NdAF not sure if the vector is the first column or the first row.. to be verified
+	H[0][0] = v(0,0);
+	H[1][0] = v(0,1);
+	H[2][0] = v(0,2);
+	H[0][1] = v(0,3);
+	H[1][1] = v(0,4);
+	H[2][1] = v(0,5);
+	H[0][2] = v(0,6);
+	H[1][2] = v(0,7);
+	H[2][2] = v(0,8);
+
 	// END TODO
-	CTransform3x3 H;
+	
 	return H;
 }
 
@@ -183,6 +196,19 @@ int countInliers(const FeatureSet &f1, const FeatureSet &f2,
         //        These ids are 1-based indices into the feature arrays,
         //        so you access the appropriate features as f1[id1-1] and f2[id2-1].
 		//
+		CVector3 p1(f1[matches[i].id1-1].x, f1[matches[i].id1-1].y,1);
+		CVector3 p2(f2[matches[i].id2-1].x, f2[matches[i].id2-1].y,1);
+		// NdAF why m?
+		p1 = M*p1;
+		p1[0] = p1[0]/p1[2];
+		p1[1] = p1[1]/p1[2];
+
+		/* If distance is less than threshold */
+		if ((pow(p1[0]-p2[0],2) + pow(p1[1]-p2[1],2)) < pow(RANSACthresh,2) ) {
+			inliers.push_back(i);
+		}
+
+
 		// END TODO
     }
 
@@ -222,6 +248,11 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 				// BEGIN TODO
 				// use this loop to compute the average translation vector
 				// over all inliers
+
+				FeatureMatch match = matches[inliers[i]];
+				u += abs(f1[match.id1-1].x - f2[match.id2-1].x);
+				v += abs(f1[match.id1-1].y - f2[match.id2-1].y);
+
 				// END TODO
 			}
 
@@ -239,6 +270,10 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 			// BEGIN TODO
 			// Compute a homography M using all inliers.
 			// This should call ComputeHomography.
+
+			M = ComputeHomography(f1,f2, matches);
+
+
 			// END TODO
 
 			break;
