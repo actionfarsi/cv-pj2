@@ -86,8 +86,8 @@ CFloatImage WarpSphericalField(CShape srcSh, CShape dstSh, float f,
 			p = r * p;
 
 			/* projection on focal plane */
-			p[0] = p/p[2];
-			p[1] = p/p[2];
+			p[0] = p[0]/p[2];
+			p[1] = p[1]/p[2];
 			
 			/* spherical distortion */
 			float radius2 = (p[0]*p[0] + p[1]*p[1]);
