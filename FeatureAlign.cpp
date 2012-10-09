@@ -61,6 +61,30 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 		// BEGIN TODO
 		// fill in the matrix A in this loop.
 		// To access an element of A, use parentheses, e.g. A(0,0)
+		A(0,2*i) = a.x;
+		A(1,2*i) = a.y;
+		A(2,2*i) = 1;
+
+		A(3,2*i) = 0;
+		A(4,2*i) = 0;
+		A(5,2*i) = 0;
+
+		A(6,2*i) = -a.x * b.x;
+		A(7,2*i) = -a.y * b.x;
+		A(8,2*i) = -b.x;
+
+		A(0,2*i+1) = 0;
+		A(1,2*i+1) = 0;
+		A(2,2*i+1) = 0;
+
+		A(3,2*i+1) = a.x;
+		A(4,2*i+1) = a.y;
+		A(5,2*i+1) = 1;
+
+		A(6,2*i) = -a.x * b.y;
+		A(7,2*i) = -a.y * b.y;
+		A(8,2*i) = -b.y;
+		
 		// END TODO
 	}
 
