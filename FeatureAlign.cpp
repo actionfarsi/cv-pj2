@@ -151,6 +151,49 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
     //  This function should also call countInliers and, at the end,
 	//  leastSquaresFit.
 
+	int bestInliersCount;
+
+	for (int i=0; i<nRANSAC; i++){
+		vector<int> sampledMatches;
+		int nS;
+		/* Select the minimal amount of points to calculate the transformation */
+		switch (m) {
+			case eTranslate: {nS = 2; break; }
+			case eHomography: {nS = 4; break; }
+		}
+			
+		/* Sample nS matches */
+		for (int k=0; k<nS; k++){
+			bool isUnique;
+			int s;
+			// Verify that was not taken already
+			do {
+				isUnique = true;
+				s = rand()*matches.size();
+				for (int j = 0; j<k; j++)
+					isUnique = (s == sampledMatches[j]);
+			} while (!isUnique);
+			// Add the new sample to the list
+			sampledMatches.push_back(s);
+		}
+
+		/* Generate the transformation from the sampledMatches 
+		use leastSquareFit rather than duplicate the code */
+		CTransform3x3 tempM;
+		leastSquaresFit(f1,f2,matches, m, sampledMatches, tempM);
+
+		/* Count the inliers*/
+		vector<int> inliers;
+		countInliers(f1,f2,matches,m,tempM,RANSACthresh, inliers);
+		
+		/* If the count is better, recalculate using all the inliers
+		and save the transformation */
+		if (inliers.size() > bestInliersCount){
+			bestInliersCount = inliers.size();
+			leastSquaresFit(f1,f2,matches, m, inliers, M);
+		}
+	}
+
     // END TODO
 
 	return 0;
