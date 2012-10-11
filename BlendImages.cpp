@@ -100,8 +100,15 @@ CByteImage BlendImages(CImagePositionV& ipv, float blendWidth)
     int height       = sh.height;
     int nBands       = sh.nBands;
 
-    // Compute the bounding box for the mosaic
     int n = ipv.size();
+	if (n == 0) return CByteImage(0,0,1);
+
+	bool is360 = false;
+
+	if (ipv[0].imgName == ipv[n-1].imgName)
+		is360 = true;
+
+	// Compute the bounding box for the mosaic
     float min_x = FLT_MAX, min_y = FLT_MAX;
     float max_x = 0, max_y = 0;
     int i;
@@ -184,7 +191,8 @@ CByteImage BlendImages(CImagePositionV& ipv, float blendWidth)
 
 	// BEGIN TODO
     // fill in appropriate entries in A to trim the left edge and
-    // to take out the vertical drift
+    // to take out the vertical drift if this is a 360 panorama
+	// (i.e. is360 is true)
 
 	// END TODO
 
