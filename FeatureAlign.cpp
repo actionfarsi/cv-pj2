@@ -151,10 +151,11 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
     //  This function should also call countInliers and, at the end,
 	//  leastSquaresFit.
 
-	int bestInliersCount;
+	int bestInliersCount = 0;
 
 	for (int i=0; i<nRANSAC; i++){
 		vector<int> sampledMatches;
+		sampledMatches.clear();
 		int nS;
 		/* Select the minimal amount of points to calculate the transformation */
 		switch (m) {
@@ -169,7 +170,7 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
 			// Verify that was not taken already
 			do {
 				isUnique = true;
-				s = rand()*matches.size();
+				s = rand()*sampledMatches.size();
 				for (int j = 0; j<k; j++)
 					isUnique = (s == sampledMatches[j]);
 			} while (!isUnique);
@@ -293,8 +294,8 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 				// over all inliers
 
 				FeatureMatch match = matches[inliers[i]];
-				u += abs(f1[match.id1-1].x - f2[match.id2-1].x);
-				v += abs(f1[match.id1-1].y - f2[match.id2-1].y);
+				u += f1[match.id1-1].x - f2[match.id2-1].x;
+				v += f1[match.id1-1].y - f2[match.id2-1].y;
 
 				// END TODO
 			}
