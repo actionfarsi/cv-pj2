@@ -58,7 +58,7 @@ static void AccumulateBlend(CByteImage& img, CFloatImage& acc, CTransform3x3 M, 
 {
 	// BEGIN TODO
 	// Fill in this routine
-
+	//repeat of blend function to find max_x,max_y etc
 	CShape sh        = img.Shape();
 	int width        = sh.width;
 	int height       = sh.height;
@@ -114,17 +114,17 @@ static void AccumulateBlend(CByteImage& img, CFloatImage& acc, CTransform3x3 M, 
 	for (int j = 0; j < 4; j++)
 	{
 		//find the transformed corner position that has the min and max vales
-		CVector3 corner = corners[j];
+		CVector3 c = corners[j];
 		//corner[0] is x
-		min_x = float(MIN(min_x, corner[0]));
-		max_x = float(MAX(max_x, corner[0]));
+		min_x = float(MIN(min_x, c[0]));
+		max_x = float(MAX(max_x, c[0]));
 		//corner[1] is y
-		min_y = float(MIN(min_y, corner[1]));
-		max_y = float(MAX(max_y, corner[1]));
+		min_y = float(MIN(min_y, c[1]));
+		max_y = float(MAX(max_y, c[1]));
 	}
 
 
-	//printf("W:%d",width);
+
 	CTransform3x3 M_inv=M.Inverse(); //get inverse transform
 	//now we go through every pixel in img, map it with M then put it in the appropriate place in acc
 	for(int i=0; i<widtha; i++){
@@ -145,54 +145,39 @@ static void AccumulateBlend(CByteImage& img, CFloatImage& acc, CTransform3x3 M, 
 			if (y < 0.0 || y >= height-1 || x<0.0 || x >= width-1){
 				continue;
 			}
+
 			double weight=1.0;
 
 
-		    
-			int distToEdge = i - min_x;
-			//int distToEdge =  max_x-i;
-			distToEdge = MIN(distToEdge, max_x - i);
+			//distance from bounding box
+			//get the min
+			//dist from right bound
+			int dist = i - min_x;
+			//dist from left bound
+			dist = MIN(dist, max_x - i);
+			//weight is equivalent to the distance over blendwidth
+			if (dist<=(blendWidth)){
+				weight = dist/(blendWidth);
+			}
 
-			if (distToEdge <= (blendWidth)){weight = distToEdge / (blendWidth);}
 
-			
 
 			//skip if black pixel
 			if(img.Pixel(floor(x),floor(y),0)==0 ||img.Pixel(floor(x),floor(y),1)==0 ||img.Pixel(floor(x),floor(y),2)==0){
 				continue;
 			}
 
-		/*	if(i==255 && j==98){
-				printf("orig:%lf",acc.Pixel(i,j,0));
-			printf("here:%lf\n",(float)(weight*img.PixelLerp(x,y,0)));
-			}
-			*/
-		
+
+
+			//accumulate the linear interpolated pixels
 			acc.Pixel(i,j,0)+=(float)(weight*img.PixelLerp(x,y,0));
-		
+
 			acc.Pixel(i,j,1)+=(float)(weight*img.PixelLerp(x,y,1));
 			acc.Pixel(i,j,2)+=(float)(weight*img.PixelLerp(x,y,2));
-		int overflow=0;
-			if(acc.Pixel(i,j,0)>255.0){
-			printf("overflow:%lf,%lf\n",acc.Pixel(i,j,0),(float)(weight*img.PixelLerp(x,y,0)));
-			   	acc.Pixel(i,j,0)-=(float)(weight*img.PixelLerp(x,y,0));
-				overflow=1;
-			}
-			if(acc.Pixel(i,j,1)>255.0){
-		//	printf("overflow:%lf,%lf\n",acc.Pixel(i,j,0),(float)(weight*img.PixelLerp(x,y,0)));
-			   	acc.Pixel(i,j,1)-=(float)(weight*img.PixelLerp(x,y,1));
-				overflow=1;
-			}
-			
-			if(acc.Pixel(i,j,2)>255.0){
-			//printf("overflow:%lf,%lf\n",acc.Pixel(i,j,0),(float)(weight*img.PixelLerp(x,y,0)));
-			   	acc.Pixel(i,j,2)-=(float)(weight*img.PixelLerp(x,y,2));
-				overflow=1;
-			}
-			
-			if(overflow!=1){
+
 			acc.Pixel(i,j,3)+=(float)weight;
-			}
+
+
 
 			//weight for now set to 1, no actual blending yet
 
@@ -224,11 +209,17 @@ static void NormalizeBlend(CFloatImage& acc, CByteImage& img)
 
 			double weight=acc.Pixel(i,j,3);
 			if(weight>0){
+				//divide by weights
 				img.Pixel(i,j,0)=acc.Pixel(i,j,0)/weight;
 				img.Pixel(i,j,1)=acc.Pixel(i,j,1)/weight;
 				img.Pixel(i,j,2)=acc.Pixel(i,j,2)/weight;
-				img.Pixel(i,j,3)=255*(weight);
+				//set alpha to opaque
+				img.Pixel(i,j,3)=255;
 
+			}else{
+				img.Pixel(i,j,0)=0;
+				img.Pixel(i,j,1)=0;
+				img.Pixel(i,j,2)=0;
 			}
 		}
 	}
@@ -268,6 +259,8 @@ CByteImage BlendImages(CImagePositionV& ipv, float blendWidth)
 	float min_x = FLT_MAX, min_y = FLT_MAX;
 	float max_x = 0, max_y = 0;
 	int i;
+	float firstcorner,lastcorner;
+	//go through each image, find corners
 	for (i = 0; i < n; i++)
 	{
 		CByteImage& img_it = ipv[i].img;
@@ -298,27 +291,33 @@ CByteImage BlendImages(CImagePositionV& ipv, float blendWidth)
 			//apply transform to corner
 			corners[k]=T*corners[k];
 
-			//divide by 
+			//divide by weight
 			corners[k][0] /= corners[0][2];
 			corners[k][1] /= corners[0][2];
 
 		}
 
-
-
+		//code for drift, keep track of first and last image top left corner
+		if(i==0){
+		firstcorner=corners[0][1];
+		}
+		if(i==n-1){
+		lastcorner=corners[0][1];
+		}
 
 		// *** BEGIN TODO #1 ***
 		// add some code here to update min_x, ..., max_y
+
 		for (int j = 0; j < 4; j++)
 		{
 			//find the transformed corner position that has the min and max vales
-			CVector3 corner = corners[j];
+			CVector3 c = corners[j];
 			//corner[0] is x
-			min_x = float(MIN(min_x, corner[0]));
-			max_x = float(MAX(max_x, corner[0]));
+			min_x = float(MIN(min_x, c[0]));
+			max_x = float(MAX(max_x, c[0]));
 			//corner[1] is y
-			min_y = float(MIN(min_y, corner[1]));
-			max_y = float(MAX(max_y, corner[1]));
+			min_y = float(MIN(min_y, c[1]));
+			max_y = float(MAX(max_y, c[1]));
 		}
 
 	}
@@ -399,31 +398,32 @@ CByteImage BlendImages(CImagePositionV& ipv, float blendWidth)
 	// (i.e. is360 is true)
 	if(is360 !=true){
 		A[0][0] = 1;
-	A[0][1] = 0;
-	A[0][2] = 0;
+		A[0][1] = 0;
+		A[0][2] = 0;
 
-	A[1][0] = 0; 
-	A[1][1] = 1;
-	A[1][2] = 0; 
+		A[1][0] = 0; 
+		A[1][1] = 1;
+		A[1][2] = 0; 
 
-	A[2][0] = 0;
-	A[2][1] = 0;
-	A[2][2] = 1;
+		A[2][0] = 0;
+		A[2][1] = 0;
+		A[2][2] = 1;
 	}else{
-	A[0][0] = 1;
-	A[0][1] = 0;
-	A[0][2] = width/2; // x translation
+		//take out drift if 360 panorama
+		A[0][0] = 1;
+		A[0][1] = 0;
+		A[0][2] = width/2; // x translation have width of image, this is the crop
+		ipv[0].
+		A[1][0] = firstcorner-lastcorner; 
+		A[1][1] = 1;
+		A[1][2] = 0; // y translation
 
-	A[1][0] = -ipv[n-1].position[1][2] / cShape.width; // delta y per unit x, TODO
-	A[1][1] = 1;
-	A[1][2] = 0; // y translation
-
-	A[2][0] = 0;
-	A[2][1] = 0;
-	A[2][2] = 1;
-		}
+		A[2][0] = 0;
+		A[2][1] = 0;
+		A[2][2] = 1;
+	}
 	// END TODO 
-	
+
 	// Warp and crop the composite
 	WarpGlobal(compImage, croppedImage, A, eWarpInterpLinear);
 
