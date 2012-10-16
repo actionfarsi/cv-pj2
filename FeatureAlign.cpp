@@ -243,7 +243,7 @@ int countInliers(const FeatureSet &f1, const FeatureSet &f2,
 		CVector3 p1(f1[matches[i].id1-1].x, f1[matches[i].id1-1].y,1);
 		CVector3 p2(f2[matches[i].id2-1].x, f2[matches[i].id2-1].y,1);
 		// NdAF why m?
-		p1 = M*p1;
+		p2 = M*p2;
 		p1[0] = p1[0]/p1[2];
 		p1[1] = p1[1]/p1[2];
 
