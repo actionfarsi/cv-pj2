@@ -61,29 +61,29 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 		// BEGIN TODO
 		// fill in the matrix A in this loop.
 		// To access an element of A, use parentheses, e.g. A(0,0)
-		A(0,2*i) = a.x;
-		A(1,2*i) = a.y;
-		A(2,2*i) = 1;
+		A(2*i,0) = a.x;
+		A(2*i,1) = a.y;
+		A(2*i,2) = 1;
 
-		A(3,2*i) = 0;
-		A(4,2*i) = 0;
-		A(5,2*i) = 0;
+		A(2*i,3) = 0;
+		A(2*i,4) = 0;
+		A(2*i,5) = 0;
 
-		A(6,2*i) = -a.x * b.x;
-		A(7,2*i) = -a.y * b.x;
-		A(8,2*i) = -b.x;
+		A(2*i,6) = -a.x * b.x;
+		A(2*i,7) = -a.y * b.x;
+		A(2*i,8) = -b.x;
 
-		A(0,2*i+1) = 0;
-		A(1,2*i+1) = 0;
-		A(2,2*i+1) = 0;
+		A(2*i+1,0) = 0;
+		A(2*i+1,1) = 0;
+		A(2*i+1,2) = 0;
 
-		A(3,2*i+1) = a.x;
-		A(4,2*i+1) = a.y;
-		A(5,2*i+1) = 1;
+		A(2*i+1,3) = a.x;
+		A(2*i+1,4) = a.y;
+		A(2*i+1,5) = 1;
 
-		A(6,2*i) = -a.x * b.y;
-		A(7,2*i) = -a.y * b.y;
-		A(8,2*i) = -b.y;
+		A(2*i+1,6) = -a.x * b.y;
+		A(2*i+1,7) = -a.y * b.y;
+		A(2*i+1,8) = -b.y;
 		
 		// END TODO
 	}
@@ -96,8 +96,14 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 	// fill the homography H with the appropriate elements of the SVD
 	// To extract, for instance, the V matrix, use svd.matrixV()
 	JacobiSVD<MatrixType>::MatrixVType v = svd.matrixV();
+	
+	//for (int i = 0; i < 8; i++)
+	//	printf("%f ",svd.singularValues()[i]);
 	// NdAF not sure if the vector is the first column or the first row.. to be verified
-	H[0][0] = v(0,0);
+	// Should be 1st column
+
+	/*
+	H[0][0] = v(0,1);
 	H[1][0] = v(0,1);
 	H[2][0] = v(0,2);
 	H[0][1] = v(0,3);
@@ -105,7 +111,28 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 	H[2][1] = v(0,5);
 	H[0][2] = v(0,6);
 	H[1][2] = v(0,7);
-	H[2][2] = v(0,8);
+	H[2][2] = v(0,8); 
+	*/
+	/*
+	H[0][0] = v(8,0);
+	H[1][0] = v(8,1);
+	H[2][0] = v(8,2);
+	H[0][1] = v(8,3);
+	H[1][1] = v(8,4);
+	H[2][1] = v(8,5);
+	H[0][2] = v(8,6);
+	H[1][2] = v(8,7);
+	H[2][2] = v(8,8); 
+	*/
+	H[0][0] = v(0,8)/v(8,8);
+	H[0][1] = v(1,8)/v(8,8);
+	H[0][2] = v(2,8)/v(8,8);
+	H[1][0] = v(3,8)/v(8,8);
+	H[1][1] = v(4,8)/v(8,8);
+	H[1][2] = v(5,8)/v(8,8);
+	H[2][0] = v(6,8)/v(8,8);
+	H[2][1] = v(7,8)/v(8,8);
+	H[2][2] = v(8,8)/v(8,8);
 
 	// END TODO
 	
@@ -170,9 +197,9 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
 			// Verify that was not taken already
 			do {
 				isUnique = true;
-				s = rand()*sampledMatches.size();
+				s = rand() % matches.size();
 				for (int j = 0; j<k; j++)
-					isUnique = (s == sampledMatches[j]);
+					isUnique = isUnique && (s != sampledMatches[j]);
 			} while (!isUnique);
 			// Add the new sample to the list
 			sampledMatches.push_back(s);
@@ -193,8 +220,9 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
 			bestInliersCount = inliers.size();
 			leastSquaresFit(f1,f2,matches, m, inliers, M);
 		}
+		
 	}
-
+	printf("RANSAC best inliers count %d/n",bestInliersCount);
     // END TODO
 
 	return 0;
@@ -243,7 +271,7 @@ int countInliers(const FeatureSet &f1, const FeatureSet &f2,
 		CVector3 p1(f1[matches[i].id1-1].x, f1[matches[i].id1-1].y,1);
 		CVector3 p2(f2[matches[i].id2-1].x, f2[matches[i].id2-1].y,1);
 		// NdAF why m?
-		p2 = M*p2;
+		p1 = M*p1;
 		p1[0] = p1[0]/p1[2];
 		p1[1] = p1[1]/p1[2];
 
@@ -294,8 +322,8 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 				// over all inliers
 
 				FeatureMatch match = matches[inliers[i]];
-				u += f1[match.id1-1].x - f2[match.id2-1].x;
-				v += f1[match.id1-1].y - f2[match.id2-1].y;
+				u += -(f1[match.id1-1].x - f2[match.id2-1].x);
+				v += -(f1[match.id1-1].y - f2[match.id2-1].y);
 
 				// END TODO
 			}
@@ -315,7 +343,14 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 			// Compute a homography M using all inliers.
 			// This should call ComputeHomography.
 
-			M = ComputeHomography(f1,f2, matches);
+			// Creates matches list (NdAF this to match given 
+			// Compute homography declaration)
+
+			vector<FeatureMatch> inMatches;
+			for (int i=0; i < (int) inliers.size(); i++)
+				inMatches.push_back(matches[inliers[i]]);
+
+			M = ComputeHomography(f1,f2, inMatches);
 
 
 			// END TODO
