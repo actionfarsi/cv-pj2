@@ -192,7 +192,7 @@ int AlignPair(int argc, const char *argv[])
     // Print out the result
     CTransform3x3 Mi = M.Inverse();
 
-    printf("%0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e\n",
+    printf("% 10.3e %10.3e %10.3e\n %10.3e %10.3e %10.3e\n %10.3e %10.3e %10.3e\n",
             Mi[0][0], Mi[0][1], Mi[0][2],
             Mi[1][0], Mi[1][1], Mi[1][2],
             Mi[2][0], Mi[2][1], Mi[2][2]);
