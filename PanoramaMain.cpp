@@ -190,10 +190,16 @@ int AlignPair(int argc, const char *argv[])
 	}
 
     // Print out the result
-    printf("%0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e %0.6e\n",
-            M[0][0], M[0][1], M[0][2],
-            M[1][0], M[1][1], M[1][2],
-            M[2][0], M[2][1], M[2][2]);
+    CTransform3x3 Mi = M.Inverse();
+
+    /*printf("% 10.3e %10.3e %10.3e\n %10.3e %10.3e %10.3e\n %10.3e %10.3e %10.3e\n",
+            Mi[0][0], Mi[0][1], Mi[0][2],
+            Mi[1][0], Mi[1][1], Mi[1][2],
+            Mi[2][0], Mi[2][1], Mi[2][2]);*/
+	printf("%0.8e %0.8e %0.8e %0.8e %0.8e %0.8e %0.8e %0.8e %0.8e",
+            Mi[0][0], Mi[0][1], Mi[0][2],
+            Mi[1][0], Mi[1][1], Mi[1][2],
+            Mi[2][0], Mi[2][1], Mi[2][2]);
 
     return 0;
 }
@@ -273,6 +279,7 @@ int BlendPairs(int argc, const char *argv[])
 
 		// M[1][2] = -M[1][2];
 
+		ip.imgName = std::string(infile1);
 		CByteImage imgTmp;
 		ReadFile(imgTmp, infile1);
 		ip.img = CByteImage(imgTmp.Shape());
@@ -288,6 +295,7 @@ int BlendPairs(int argc, const char *argv[])
 	//     ip.position[k] = ipList[n-1].position[k] - rel_t[k];
 	ip.position = M * ipList[n-1].position;
 
+	ip.imgName = std::string(infile2);
 	CByteImage imgTmp;
 	ReadFile(imgTmp, infile2);
 	ip.img = CByteImage(imgTmp.Shape());

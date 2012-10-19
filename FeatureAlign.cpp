@@ -61,17 +61,81 @@ CTransform3x3 ComputeHomography(const FeatureSet &f1, const FeatureSet &f2,
 		// BEGIN TODO
 		// fill in the matrix A in this loop.
 		// To access an element of A, use parentheses, e.g. A(0,0)
+		A(2*i,0) = a.x;
+		A(2*i,1) = a.y;
+		A(2*i,2) = 1;
+
+		A(2*i,3) = 0;
+		A(2*i,4) = 0;
+		A(2*i,5) = 0;
+
+		A(2*i,6) = -a.x * b.x;
+		A(2*i,7) = -a.y * b.x;
+		A(2*i,8) = -b.x;
+
+		A(2*i+1,0) = 0;
+		A(2*i+1,1) = 0;
+		A(2*i+1,2) = 0;
+
+		A(2*i+1,3) = a.x;
+		A(2*i+1,4) = a.y;
+		A(2*i+1,5) = 1;
+
+		A(2*i+1,6) = -a.x * b.y;
+		A(2*i+1,7) = -a.y * b.y;
+		A(2*i+1,8) = -b.y;
+		
 		// END TODO
 	}
 
 	// compute the svd of A using the Eigen package
 	JacobiSVD<MatrixType> svd(A, ComputeFullV);
 
+	CTransform3x3 H;
 	// BEGIN TODO
 	// fill the homography H with the appropriate elements of the SVD
 	// To extract, for instance, the V matrix, use svd.matrixV()
+	JacobiSVD<MatrixType>::MatrixVType v = svd.matrixV();
+	
+	//for (int i = 0; i < 8; i++)
+	//	printf("%f ",svd.singularValues()[i]);
+	// NdAF not sure if the vector is the first column or the first row.. to be verified
+	// Should be 1st column
+
+	/*
+	H[0][0] = v(0,1);
+	H[1][0] = v(0,1);
+	H[2][0] = v(0,2);
+	H[0][1] = v(0,3);
+	H[1][1] = v(0,4);
+	H[2][1] = v(0,5);
+	H[0][2] = v(0,6);
+	H[1][2] = v(0,7);
+	H[2][2] = v(0,8); 
+	*/
+	/*
+	H[0][0] = v(8,0);
+	H[1][0] = v(8,1);
+	H[2][0] = v(8,2);
+	H[0][1] = v(8,3);
+	H[1][1] = v(8,4);
+	H[2][1] = v(8,5);
+	H[0][2] = v(8,6);
+	H[1][2] = v(8,7);
+	H[2][2] = v(8,8); 
+	*/
+	H[0][0] = v(0,8)/v(8,8);
+	H[0][1] = v(1,8)/v(8,8);
+	H[0][2] = v(2,8)/v(8,8);
+	H[1][0] = v(3,8)/v(8,8);
+	H[1][1] = v(4,8)/v(8,8);
+	H[1][2] = v(5,8)/v(8,8);
+	H[2][0] = v(6,8)/v(8,8);
+	H[2][1] = v(7,8)/v(8,8);
+	H[2][2] = v(8,8)/v(8,8);
+
 	// END TODO
-	CTransform3x3 H;
+	
 	return H;
 }
 
@@ -114,6 +178,52 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
     //  This function should also call countInliers and, at the end,
 	//  leastSquaresFit.
 
+	int bestInliersCount = 0;
+
+	for (int i=0; i<nRANSAC; i++){
+		vector<int> sampledMatches;
+		sampledMatches.clear();
+		int nS;
+		/* Select the minimal amount of points to calculate the transformation */
+		switch (m) {
+			case eTranslate: {nS = 2; break; }
+			case eHomography: {nS = 4; break; }
+		}
+			
+		/* Sample nS matches */
+		for (int k=0; k<nS; k++){
+			bool isUnique;
+			int s;
+			// Verify that was not taken already
+			do {
+				isUnique = true;
+				s = rand() % matches.size();
+				for (int j = 0; j<k; j++)
+					isUnique = isUnique && (s != sampledMatches[j]);
+			} while (!isUnique);
+			// Add the new sample to the list
+			sampledMatches.push_back(s);
+		}
+
+		/* Generate the transformation from the sampledMatches 
+		use leastSquareFit rather than duplicate the code */
+		CTransform3x3 tempM;
+		leastSquaresFit(f1,f2,matches, m, sampledMatches, tempM);
+
+		/* Count the inliers*/
+		vector<int> inliers;
+		countInliers(f1,f2,matches,m,tempM,RANSACthresh, inliers);
+		
+		/* If the count is better, recalculate using all the inliers
+		and save the transformation */
+		if (inliers.size() > bestInliersCount){
+			bestInliersCount = inliers.size();
+			leastSquaresFit(f1,f2,matches, m, inliers, M);
+		}
+			
+	}
+	//printf("RANSAC best inliers count %d/n",bestInliersCount);
+	fprintf(stderr, "num_inliers: %d / %d\n", (int) bestInliersCount, (int) matches.size());
     // END TODO
 
 	return 0;
@@ -159,6 +269,19 @@ int countInliers(const FeatureSet &f1, const FeatureSet &f2,
         //        These ids are 1-based indices into the feature arrays,
         //        so you access the appropriate features as f1[id1-1] and f2[id2-1].
 		//
+		CVector3 p1(f1[matches[i].id1-1].x, f1[matches[i].id1-1].y,1);
+		CVector3 p2(f2[matches[i].id2-1].x, f2[matches[i].id2-1].y,1);
+		// NdAF why m?
+		p1 = M*p1;
+		p1[0] = p1[0]/p1[2];
+		p1[1] = p1[1]/p1[2];
+
+		/* If distance is less than threshold */
+		if ((pow(p1[0]-p2[0],2) + pow(p1[1]-p2[1],2)) < pow(RANSACthresh,2) ) {
+			inliers.push_back(i);
+		}
+
+
 		// END TODO
     }
 
@@ -198,6 +321,11 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 				// BEGIN TODO
 				// use this loop to compute the average translation vector
 				// over all inliers
+
+				FeatureMatch match = matches[inliers[i]];
+				u += -(f1[match.id1-1].x - f2[match.id2-1].x);
+				v += -(f1[match.id1-1].y - f2[match.id2-1].y);
+
 				// END TODO
 			}
 
@@ -215,6 +343,17 @@ int leastSquaresFit(const FeatureSet &f1, const FeatureSet &f2,
 			// BEGIN TODO
 			// Compute a homography M using all inliers.
 			// This should call ComputeHomography.
+
+			// Creates matches list (NdAF this to match given 
+			// Compute homography declaration)
+
+			vector<FeatureMatch> inMatches;
+			for (int i=0; i < (int) inliers.size(); i++)
+				inMatches.push_back(matches[inliers[i]]);
+
+			M = ComputeHomography(f1,f2, inMatches);
+
+
 			// END TODO
 
 			break;

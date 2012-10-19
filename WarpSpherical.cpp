@@ -77,6 +77,23 @@ CFloatImage WarpSphericalField(CShape srcSh, CShape dstSh, float f,
 			// (xt/zt,yt/zt,1), then distort with radial distortion
 			// coefficients k1 and k2
 
+			/* theta phi -> point on spherical surface */
+			p[0] = sin(xf) * cos(yf);
+			p[1] = sin(yf);
+			p[2] = cos(yf) * cos(xf);
+
+			/* rotation for camera direction */
+			p = r * p;
+			
+			/* projection on focal plane */
+			p[0] = p[0]/p[2];
+			p[1] = p[1]/p[2];
+			p[2] = 1;
+			
+			/* spherical distortion */
+			float radius2 = (p[0]*p[0] + p[1]*p[1]);
+			xt = p[0]* (1 + k1*radius2 + k2*radius2*radius2);
+			yt = p[1]* (1 + k1*radius2 + k2*radius2*radius2);
 			// END TODO
 
 	    

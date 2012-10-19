@@ -30,10 +30,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 struct CImagePosition
 {
+	std::string imgName;    // filename 
     CByteImage img;         // image
-    // float position[2];      // position relative to first image
     CTransform3x3 position;
 };
 
