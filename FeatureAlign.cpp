@@ -220,9 +220,10 @@ int alignPair(const FeatureSet &f1, const FeatureSet &f2,
 			bestInliersCount = inliers.size();
 			leastSquaresFit(f1,f2,matches, m, inliers, M);
 		}
-		
+			
 	}
-	printf("RANSAC best inliers count %d/n",bestInliersCount);
+	//printf("RANSAC best inliers count %d/n",bestInliersCount);
+	fprintf(stderr, "num_inliers: %d / %d\n", (int) bestInliersCount, (int) matches.size());
     // END TODO
 
 	return 0;
